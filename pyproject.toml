@@ -6,7 +6,7 @@ build-backend = "hatchling.build"
 name = "butterbot"
 version = "0.1.0"
 description = "ButterBot Discord bot"
-readme = "MIGRATION.md"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "aiohttp>=3.11,<4",
