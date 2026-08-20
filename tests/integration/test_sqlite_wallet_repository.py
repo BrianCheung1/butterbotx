@@ -66,7 +66,11 @@ async def test_first_lookup_creates_only_a_zero_balance_wallet(
             "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name"
         ).fetchall()
     )
-    assert [row["name"] for row in tables] == ["schema_migrations", "users"]
+    assert [row["name"] for row in tables] == [
+        "daily_claims",
+        "schema_migrations",
+        "users",
+    ]
 
 
 @pytest.mark.asyncio

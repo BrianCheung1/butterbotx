@@ -9,6 +9,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 
+from butterbot.application.economy.claim_daily import ClaimDaily
 from butterbot.application.economy.get_balance import GetBalance
 from butterbot.application.economy.set_balance import SetBalance
 from butterbot.application.economy.transfer_money import TransferMoney
@@ -16,6 +17,9 @@ from butterbot.config import Settings
 from butterbot.discord_app.extensions import load_extensions
 from butterbot.infrastructure.database.migrations import MigrationRunner
 from butterbot.infrastructure.database.sqlite import SQLiteDatabase
+from butterbot.infrastructure.database.sqlite_daily_claim_repository import (
+    SQLiteDailyClaimRepository,
+)
 from butterbot.infrastructure.database.sqlite_wallet_repository import (
     SQLiteWalletRepository,
 )
@@ -37,6 +41,10 @@ class ButterBot(commands.Bot):
         self._http_session: aiohttp.ClientSession | None = None
         self._database = SQLiteDatabase(settings.database_path)
         self._wallet_repository = SQLiteWalletRepository(settings.database_path)
+        self._daily_claim_repository = SQLiteDailyClaimRepository(
+            settings.database_path
+        )
+        self.claim_daily = ClaimDaily(self._daily_claim_repository)
         self.get_balance = GetBalance(self._wallet_repository)
         self.set_balance = SetBalance(self._wallet_repository)
         self.transfer_money = TransferMoney(self._wallet_repository)
@@ -68,6 +76,7 @@ class ButterBot(commands.Bot):
         if self._http_session is not None:
             await self._http_session.close()
             self._http_session = None
+        self._daily_claim_repository.close()
         self._wallet_repository.close()
         self._database.close()
 
