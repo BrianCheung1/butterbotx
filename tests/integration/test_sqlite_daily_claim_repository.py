@@ -139,10 +139,10 @@ async def test_first_claim_creates_wallet_and_canonical_daily_state(
 ) -> None:
     result = await repository.claim(10, date(2026, 8, 19))
 
-    assert result.wallet.balance == 1_000
+    assert result.wallet.balance == 500
     assert result.reward.streak == 1
-    assert result.reward.total == 1_000
-    assert dict(user_row(database, 10)) == {"user_id": 10, "balance": 1_000}
+    assert result.reward.total == 500
+    assert dict(user_row(database, 10)) == {"user_id": 10, "balance": 500}
     assert dict(daily_row(database, 10)) == {
         "streak": 1,
         "last_claim_date": "2026-08-19",
@@ -158,11 +158,11 @@ async def test_consecutive_claim_credits_exact_reward(
     result = await repository.claim(11, date(2026, 8, 19))
 
     assert (result.reward.bonus, result.reward.total, result.reward.streak) == (
-        2_000,
-        3_000,
+        100,
+        600,
         3,
     )
-    assert user_row(database, 11)["balance"] == 8_000
+    assert user_row(database, 11)["balance"] == 5_600
     assert dict(daily_row(database, 11)) == {
         "streak": 3,
         "last_claim_date": "2026-08-19",
@@ -187,7 +187,7 @@ async def test_same_day_claim_rolls_back_every_change(
 
 @pytest.mark.parametrize(
     ("claim_date", "expected_streak", "expected_total"),
-    [(date(2026, 9, 1), 6, 17_000), (date(2026, 9, 2), 1, 1_000)],
+    [(date(2026, 8, 20), 6, 750), (date(2026, 8, 21), 1, 500)],
 )
 @pytest.mark.asyncio
 async def test_streak_gap_boundary(
@@ -276,7 +276,7 @@ async def test_separate_repositories_allow_only_one_simultaneous_claim(
 
     assert sum(isinstance(result, DailyClaimResult) for result in results) == 1
     assert sum(isinstance(result, DailyAlreadyClaimed) for result in results) == 1
-    assert user_row(database, 17)["balance"] == 1_000
+    assert user_row(database, 17)["balance"] == 500
     assert dict(daily_row(database, 17)) == {
         "streak": 1,
         "last_claim_date": "2026-08-19",

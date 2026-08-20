@@ -7,10 +7,11 @@ from datetime import UTC, date, datetime, time, timedelta
 
 from butterbot.domain.wallet import Wallet
 
-DAILY_BASE_REWARD = 1_000
-DAILY_BONUS_CAP = 1_000_000
-DAILY_STREAK_RESET_DAYS = 14
-_FIRST_CAPPED_PREVIOUS_STREAK = 11
+DAILY_BASE_REWARD = 500
+DAILY_LINEAR_BONUS_PER_DAY = 50
+DAILY_LINEAR_BONUS_CAP_DAYS = 10
+DAILY_WEEKLY_MILESTONE_INTERVAL = 7
+DAILY_WEEKLY_MILESTONE_BONUS = 500
 
 
 class DailyAlreadyClaimed(ValueError):
@@ -73,24 +74,28 @@ def calculate_daily_reward(state: DailyClaimState, claim_date: date) -> DailyRew
             raise InvalidDailyClaimState("Last daily claim date is in the future.")
         if gap_days == 0:
             raise DailyAlreadyClaimed(_next_utc_midnight(claim_date))
-        if gap_days >= DAILY_STREAK_RESET_DAYS:
+        if gap_days > 1:
             previous_streak = 0
 
-    bonus = _daily_bonus(previous_streak)
+    streak = previous_streak + 1
+    bonus = _daily_bonus(streak)
     return DailyReward(
         base=DAILY_BASE_REWARD,
         bonus=bonus,
         total=DAILY_BASE_REWARD + bonus,
-        streak=previous_streak + 1,
+        streak=streak,
     )
 
 
-def _daily_bonus(previous_streak: int) -> int:
-    if previous_streak == 0:
-        return 0
-    if previous_streak >= _FIRST_CAPPED_PREVIOUS_STREAK:
-        return DAILY_BONUS_CAP
-    return DAILY_BASE_REWARD * 2 ** (previous_streak - 1)
+def _daily_bonus(streak: int) -> int:
+    linear_bonus_days = min(streak - 1, DAILY_LINEAR_BONUS_CAP_DAYS)
+    linear_bonus = DAILY_LINEAR_BONUS_PER_DAY * linear_bonus_days
+    milestone_bonus = (
+        DAILY_WEEKLY_MILESTONE_BONUS
+        if streak % DAILY_WEEKLY_MILESTONE_INTERVAL == 0
+        else 0
+    )
+    return linear_bonus + milestone_bonus
 
 
 def _next_utc_midnight(claim_date: date) -> datetime:

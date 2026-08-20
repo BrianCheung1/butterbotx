@@ -65,7 +65,7 @@ def callback() -> Any:
 def successful_result() -> DailyClaimResult:
     return DailyClaimResult(
         wallet=Wallet(42, 12_345),
-        reward=DailyReward(base=1_000, bonus=2_000, total=3_000, streak=3),
+        reward=DailyReward(base=500, bonus=100, total=600, streak=3),
         claim_date=date(2026, 8, 19),
     )
 
@@ -84,9 +84,9 @@ async def test_daily_claims_for_caller_and_renders_exact_embed() -> None:
     assert isinstance(embed, discord.Embed)
     assert embed.title == "Daily Reward"
     assert embed.description == (
-        "Claimed your daily reward of $3,000!\n"
-        "Daily base: $1,000\n"
-        "Bonus: $2,000\n"
+        "Claimed your daily reward of $600!\n"
+        "Daily base: $500\n"
+        "Bonus: $100\n"
         "Streak: 3 day(s)\n"
         "Your new balance is $12,345."
     )
