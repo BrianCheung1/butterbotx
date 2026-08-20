@@ -8,6 +8,7 @@ separation between Discord, application, domain, and persistence code.
 ## Current features
 
 - `/balance` — view a wallet balance
+- `/bank balance` — compare liquid wallet money with protected bank storage
 - `/give` — transfer whole-dollar currency to another user
 - `/daily` — claim a consecutive-day reward
 - `/mine` — mine resources, earn currency and XP, and progress through levels
