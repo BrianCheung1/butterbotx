@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -35,8 +36,9 @@ class FakeResponse:
 
 
 class FakeInteraction:
-    def __init__(self, user: FakeUser) -> None:
+    def __init__(self, user: FakeUser, transfer_money: Any) -> None:
         self.user = user
+        self.client = SimpleNamespace(transfer_money=transfer_money)
         self.response = FakeResponse()
         self.edits: list[dict[str, Any]] = []
 
@@ -68,9 +70,9 @@ def callback() -> Any:
 async def test_give_transfers_whole_dollars_and_renders_success() -> None:
     sender = FakeUser(1, "Sender", "<@1>")
     recipient = FakeUser(2, "Recipient", "<@2>")
-    interaction = FakeInteraction(sender)
     service = StubTransferMoney()
-    cog = GiveCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(sender, service)
+    cog = GiveCog()
 
     await callback()(cog, interaction, user=recipient, amount=1_999)
 
@@ -98,9 +100,9 @@ async def test_give_transfers_whole_dollars_and_renders_success() -> None:
 async def test_give_rejects_invalid_discord_target_before_service(
     recipient: FakeUser, expected: str
 ) -> None:
-    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"))
     service = StubTransferMoney()
-    cog = GiveCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"), service)
+    cog = GiveCog()
 
     await callback()(cog, interaction, user=recipient, amount=100)
 
@@ -111,9 +113,9 @@ async def test_give_rejects_invalid_discord_target_before_service(
 
 @pytest.mark.asyncio
 async def test_give_renders_insufficient_balance_safely() -> None:
-    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"))
     service = StubTransferMoney(InsufficientFunds(123))
-    cog = GiveCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"), service)
+    cog = GiveCog()
 
     await callback()(
         cog,
@@ -132,9 +134,9 @@ async def test_give_renders_insufficient_balance_safely() -> None:
 
 @pytest.mark.asyncio
 async def test_give_renders_recipient_limit_safely() -> None:
-    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"))
     service = StubTransferMoney(WalletLimitExceeded())
-    cog = GiveCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"), service)
+    cog = GiveCog()
 
     await callback()(
         cog,
@@ -150,9 +152,9 @@ async def test_give_renders_recipient_limit_safely() -> None:
 
 @pytest.mark.asyncio
 async def test_give_hides_and_logs_unexpected_error(caplog: Any) -> None:
-    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"))
     service = StubTransferMoney(RuntimeError("private database detail"))
-    cog = GiveCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(FakeUser(1, "Sender", "<@1>"), service)
+    cog = GiveCog()
 
     await callback()(
         cog,

@@ -75,13 +75,31 @@ needed by the commands you intend to use.
 The default database is created at `data/butterbot.sqlite3`. The `data/`,
 `.env`, and `.venv/` paths are ignored by Git.
 
-> [!NOTE]
-> ButterBot currently loads its command definitions at startup but does not
-> automatically synchronize a brand-new application's command tree with
-> Discord. The application must already have its command tree synchronized.
-> The repository does not yet expose a synchronization command; avoid adding an
-> unconditional production sync because global command changes can propagate
-> slowly and guild commands require explicit cleanup.
+> [!IMPORTANT]
+> Normal ButterBot startup never synchronizes application commands. Command
+> publication and removal are explicit operational actions.
+
+For fast testing, enable development commands and synchronize only the configured
+development guild:
+
+```bash
+python -m butterbot sync-commands development
+```
+
+After a reviewed change reaches production, publish the core global command tree
+deliberately with development commands disabled:
+
+```bash
+python -m butterbot sync-commands production --confirm-production
+```
+
+Both synchronization operations log the existing, desired, added, retained, and
+removed command names before changing Discord. To remove all previously
+synchronized development-guild commands, retain `DEV_GUILD_ID` and run:
+
+```bash
+python -m butterbot sync-commands clear-development --confirm
+```
 
 ## Configuration
 
@@ -104,8 +122,9 @@ pull requests.
 When `ENABLE_DEV_COMMANDS=false`, development extensions are not loaded and
 `/set-balance` is absent from the local command tree. Discord stores registered
 guild commands remotely, so disabling the setting does not remove commands that
-were synchronized previously; those commands must also be removed with an
-explicit guild synchronization.
+were synchronized previously; use the explicit `clear-development` operation to
+remove them. Production synchronization rejects `ENABLE_DEV_COMMANDS=true`, and
+development-only commands are never loaded into its command tree.
 
 ## Project structure
 

@@ -18,9 +18,6 @@ logger = logging.getLogger(__name__)
 class BalanceCog(commands.Cog):
     """Expose wallet balance lookup as a Discord slash command."""
 
-    def __init__(self, get_balance: GetBalance) -> None:
-        self._get_balance = get_balance
-
     @app_commands.command(
         name="balance", description="Check your balance or someone else's."
     )
@@ -35,7 +32,7 @@ class BalanceCog(commands.Cog):
         """Show the selected user's wallet, defaulting to the caller."""
         selected_user = user or interaction.user
         try:
-            balance = await self._get_balance.execute(selected_user.id)
+            balance = await _get_balance(interaction).execute(selected_user.id)
         except Exception:
             logger.exception(
                 "Failed to retrieve wallet balance.",
@@ -58,16 +55,25 @@ class BalanceCog(commands.Cog):
         await interaction.response.send_message(embed=embed)
 
 
-class BalanceBot(Protocol):
-    """Bot capabilities required to register the balance cog."""
+class BalanceRuntime(Protocol):
+    """Runtime service required when the balance command executes."""
 
     get_balance: GetBalance
+
+
+def _get_balance(interaction: discord.Interaction) -> GetBalance:
+    """Resolve the balance use case only at command execution time."""
+    return cast(BalanceRuntime, interaction.client).get_balance
+
+
+class BalanceBot(Protocol):
+    """Bot capability required to register the balance cog."""
 
     async def add_cog(self, cog: commands.Cog, /, *, override: bool = False) -> None:
         """Register a Discord cog."""
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Register the explicitly composed balance command."""
+    """Register balance metadata without resolving runtime services."""
     balance_bot = cast(BalanceBot, bot)
-    await balance_bot.add_cog(BalanceCog(balance_bot.get_balance))
+    await balance_bot.add_cog(BalanceCog())

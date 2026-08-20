@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Any, cast
 
 import discord
@@ -63,8 +64,15 @@ class FakeMessage:
 
 
 class FakeInteraction:
-    def __init__(self, user_id: int, *, fail_edits: set[int] | None = None) -> None:
+    def __init__(
+        self,
+        user_id: int,
+        *,
+        mine: Any = None,
+        fail_edits: set[int] | None = None,
+    ) -> None:
         self.user = FakeUser(user_id)
+        self.client = SimpleNamespace(mine=mine)
         self.events: list[str] = []
         self.response = FakeResponse(self.events)
         self.followup = FakeFollowup(self.events)
@@ -153,11 +161,11 @@ def mining_result(
 
 @pytest.mark.asyncio
 async def test_command_commits_before_three_fast_presentation_stages() -> None:
-    interaction = FakeInteraction(42)
     service = StubMine([mining_result()])
+    interaction = FakeInteraction(42, mine=service)
     service.events = interaction.events
     delay = RecordingDelay(interaction.events)
-    cog = MineCog(service, delay)  # type: ignore[arg-type]
+    cog = MineCog(delay)
 
     await command_callback()(cog, interaction)
 
@@ -193,10 +201,9 @@ async def test_command_commits_before_three_fast_presentation_stages() -> None:
 
 @pytest.mark.asyncio
 async def test_command_announces_level_up_in_final_stage() -> None:
-    interaction = FakeInteraction(42)
-    cog = MineCog(
-        cast(Any, StubMine([mining_result(leveled_up=True)])), RecordingDelay()
-    )
+    service = StubMine([mining_result(leveled_up=True)])
+    interaction = FakeInteraction(42, mine=service)
+    cog = MineCog(RecordingDelay())
 
     await command_callback()(cog, interaction)
 
@@ -207,10 +214,10 @@ async def test_command_announces_level_up_in_final_stage() -> None:
 @pytest.mark.asyncio
 async def test_command_cooldown_skips_animation() -> None:
     next_mine_at = datetime(2026, 8, 20, 12, 0, 30, tzinfo=UTC)
-    interaction = FakeInteraction(42)
     delay = RecordingDelay()
     service = StubMine([MiningCooldownActive(next_mine_at)])
-    cog = MineCog(service, delay)  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, mine=service)
+    cog = MineCog(delay)
 
     await command_callback()(cog, interaction)
 
@@ -242,9 +249,10 @@ async def test_command_cooldown_skips_animation() -> None:
 async def test_command_maps_service_errors_without_animation(
     error: Exception, expected: str
 ) -> None:
-    interaction = FakeInteraction(42)
     delay = RecordingDelay()
-    cog = MineCog(StubMine([error]), delay)  # type: ignore[arg-type]
+    service = StubMine([error])
+    interaction = FakeInteraction(42, mine=service)
+    cog = MineCog(delay)
 
     await command_callback()(cog, interaction)
 
@@ -329,8 +337,8 @@ async def test_eligible_mine_again_reuses_service_view_and_message() -> None:
     second = mining_result(resource="diamond", balance=12_569, next_second=59)
     service = StubMine([first, second])
     delay = RecordingDelay()
-    command_interaction = FakeInteraction(42)
-    cog = MineCog(service, delay)  # type: ignore[arg-type]
+    command_interaction = FakeInteraction(42, mine=service)
+    cog = MineCog(delay)
     await command_callback()(cog, command_interaction)
     view = command_interaction.edits[-1]["view"]
     button_interaction = FakeInteraction(42)
@@ -405,9 +413,9 @@ async def test_timeout_disables_button_with_best_effort_edit() -> None:
 async def test_animation_edit_failure_reveals_without_retrying_mine(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    interaction = FakeInteraction(42, fail_edits={1})
     service = StubMine([mining_result()])
-    cog = MineCog(service, RecordingDelay())  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, mine=service, fail_edits={1})
+    cog = MineCog(RecordingDelay())
 
     await command_callback()(cog, interaction)
 
@@ -421,9 +429,9 @@ async def test_animation_edit_failure_reveals_without_retrying_mine(
 async def test_final_edit_failure_does_not_retry_mine(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    interaction = FakeInteraction(42, fail_edits={3})
     service = StubMine([mining_result()])
-    cog = MineCog(service, RecordingDelay())  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, mine=service, fail_edits={3})
+    cog = MineCog(RecordingDelay())
 
     await command_callback()(cog, interaction)
 

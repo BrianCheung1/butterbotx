@@ -23,9 +23,6 @@ logger = logging.getLogger(__name__)
 class DailyCog(commands.Cog):
     """Expose atomic UTC-calendar daily claims through Discord."""
 
-    def __init__(self, claim_daily: ClaimDaily) -> None:
-        self._claim_daily = claim_daily
-
     @app_commands.command(name="daily", description="Claim your daily reward.")
     @app_commands.allowed_installs(guilds=True, users=True)
     @app_commands.allowed_contexts(guilds=True, dms=True, private_channels=True)
@@ -33,7 +30,7 @@ class DailyCog(commands.Cog):
         """Claim and render the invoking user's daily reward."""
         await interaction.response.defer()
         try:
-            result = await self._claim_daily.execute(interaction.user.id)
+            result = await _claim_daily(interaction).execute(interaction.user.id)
         except DailyAlreadyClaimed as error:
             next_claim_timestamp = int(error.next_claim_at.timestamp())
             await interaction.edit_original_response(
@@ -91,16 +88,25 @@ class DailyCog(commands.Cog):
         await interaction.edit_original_response(embed=embed)
 
 
-class DailyBot(Protocol):
-    """Bot capabilities required to register the daily cog."""
+class DailyRuntime(Protocol):
+    """Runtime service required when the daily command executes."""
 
     claim_daily: ClaimDaily
+
+
+def _claim_daily(interaction: discord.Interaction) -> ClaimDaily:
+    """Resolve the daily use case only at command execution time."""
+    return cast(DailyRuntime, interaction.client).claim_daily
+
+
+class DailyBot(Protocol):
+    """Bot capability required to register the daily cog."""
 
     async def add_cog(self, cog: commands.Cog, /, *, override: bool = False) -> None:
         """Register a Discord cog."""
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Register the explicitly composed daily command."""
+    """Register daily metadata without resolving runtime services."""
     daily_bot = cast(DailyBot, bot)
-    await daily_bot.add_cog(DailyCog(daily_bot.claim_daily))
+    await daily_bot.add_cog(DailyCog())
