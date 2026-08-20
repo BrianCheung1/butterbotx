@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 
 from butterbot.application.economy.get_bank_balance import GetBankBalance
-from butterbot.domain.bank import BankAccount, BankOverview
+from butterbot.domain.bank import (
+    BankAccount,
+    BankDepositResult,
+    BankDepositSelection,
+    BankOverview,
+)
 from butterbot.domain.wallet import Wallet
 
 
@@ -15,6 +20,11 @@ class FakeBankRepository:
     async def get_or_create_overview(self, user_id: int) -> BankOverview:
         self.requested_user_ids.append(user_id)
         return self.result
+
+    async def deposit(
+        self, user_id: int, selection: BankDepositSelection
+    ) -> BankDepositResult:
+        raise AssertionError("Balance lookup must not perform a deposit.")
 
 
 @pytest.mark.asyncio

@@ -9,6 +9,7 @@ separation between Discord, application, domain, and persistence code.
 
 - `/balance` — view a wallet balance
 - `/bank balance` — compare liquid wallet money with protected bank storage
+- `/bank deposit` — move an exact amount or 25/50/75/100% of wallet money into the bank
 - `/give` — transfer whole-dollar currency to another user
 - `/daily` — claim a consecutive-day reward
 - `/mine` — mine resources, earn currency and XP, and progress through levels

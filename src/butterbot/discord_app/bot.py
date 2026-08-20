@@ -10,6 +10,7 @@ import discord
 from discord.ext import commands
 
 from butterbot.application.economy.claim_daily import ClaimDaily
+from butterbot.application.economy.deposit_to_bank import DepositToBank
 from butterbot.application.economy.get_balance import GetBalance
 from butterbot.application.economy.get_bank_balance import GetBankBalance
 from butterbot.application.economy.set_balance import SetBalance
@@ -58,6 +59,7 @@ class ButterBot(commands.Bot):
         )
         self._mining_repository = SQLiteMiningRepository(settings.database_path)
         self.claim_daily = ClaimDaily(self._daily_claim_repository)
+        self.deposit_to_bank = DepositToBank(self._bank_repository)
         self.get_bank_balance = GetBankBalance(self._bank_repository)
         self.get_balance = GetBalance(self._wallet_repository)
         self.set_balance = SetBalance(self._wallet_repository)

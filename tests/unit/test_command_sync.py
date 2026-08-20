@@ -17,6 +17,7 @@ from butterbot.discord_app.command_sync import (
 )
 
 RUNTIME_SERVICE_ATTRIBUTES = {
+    "deposit_to_bank",
     "get_bank_balance",
     "get_balance",
     "transfer_money",
