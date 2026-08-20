@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from butterbot.domain.bank import BankOverview
+from butterbot.domain.bank import (
+    BankDepositResult,
+    BankDepositSelection,
+    BankOverview,
+)
 
 
 class BankRepository(Protocol):
@@ -12,4 +16,10 @@ class BankRepository(Protocol):
 
     async def get_or_create_overview(self, user_id: int) -> BankOverview:
         """Return liquid and protected balances, creating defaults if needed."""
+        ...
+
+    async def deposit(
+        self, user_id: int, selection: BankDepositSelection
+    ) -> BankDepositResult:
+        """Atomically move transaction-current wallet money into the bank."""
         ...
