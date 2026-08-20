@@ -1,0 +1,1 @@
+"""Concrete mining infrastructure."""

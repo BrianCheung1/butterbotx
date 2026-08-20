@@ -1,0 +1,1 @@
+"""Mining application use cases."""

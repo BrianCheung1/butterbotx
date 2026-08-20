@@ -68,6 +68,7 @@ async def test_first_lookup_creates_only_a_zero_balance_wallet(
     )
     assert [row["name"] for row in tables] == [
         "daily_claims",
+        "mining_profiles",
         "schema_migrations",
         "users",
     ]

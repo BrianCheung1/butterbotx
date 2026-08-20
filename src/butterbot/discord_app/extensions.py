@@ -9,6 +9,7 @@ CORE_EXTENSION_MODULES: tuple[str, ...] = (
     "butterbot.discord_app.cogs.balance",
     "butterbot.discord_app.cogs.daily",
     "butterbot.discord_app.cogs.give",
+    "butterbot.discord_app.cogs.mine",
 )
 
 DEV_EXTENSION_MODULES: tuple[str, ...] = ("butterbot.discord_app.cogs.set_balance",)
