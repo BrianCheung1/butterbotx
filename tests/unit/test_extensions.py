@@ -25,12 +25,14 @@ async def test_production_loads_only_core_extensions() -> None:
 
     assert CORE_EXTENSION_MODULES == (
         "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.bank",
         "butterbot.discord_app.cogs.daily",
         "butterbot.discord_app.cogs.give",
         "butterbot.discord_app.cogs.mine",
     )
     assert bot.loaded == [
         "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.bank",
         "butterbot.discord_app.cogs.daily",
         "butterbot.discord_app.cogs.give",
         "butterbot.discord_app.cogs.mine",
@@ -46,6 +48,7 @@ async def test_development_commands_load_after_core_extensions() -> None:
     assert DEV_EXTENSION_MODULES == ("butterbot.discord_app.cogs.set_balance",)
     assert bot.loaded == [
         "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.bank",
         "butterbot.discord_app.cogs.daily",
         "butterbot.discord_app.cogs.give",
         "butterbot.discord_app.cogs.mine",

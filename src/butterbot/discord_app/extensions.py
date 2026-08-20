@@ -7,6 +7,7 @@ from typing import Protocol
 # Feature vertical slices are registered in explicit production/dev sets.
 CORE_EXTENSION_MODULES: tuple[str, ...] = (
     "butterbot.discord_app.cogs.balance",
+    "butterbot.discord_app.cogs.bank",
     "butterbot.discord_app.cogs.daily",
     "butterbot.discord_app.cogs.give",
     "butterbot.discord_app.cogs.mine",

@@ -17,6 +17,7 @@ from butterbot.discord_app.command_sync import (
 )
 
 RUNTIME_SERVICE_ATTRIBUTES = {
+    "get_bank_balance",
     "get_balance",
     "transfer_money",
     "claim_daily",
@@ -54,6 +55,7 @@ async def test_sync_bot_loads_every_extension_without_runtime_services_or_files(
         assert bot.runtime_service_accesses == []
         assert set(bot.cogs) == {
             "BalanceCog",
+            "BankCog",
             "DailyCog",
             "GiveCog",
             "MineCog",
@@ -76,6 +78,7 @@ async def test_production_sync_bot_cannot_register_development_commands() -> Non
 
         assert {command.name for command in bot.tree.get_commands()} == {
             "balance",
+            "bank",
             "daily",
             "give",
             "mine",
