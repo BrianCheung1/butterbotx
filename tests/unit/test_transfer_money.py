@@ -4,11 +4,10 @@ import pytest
 
 from butterbot.application.economy.transfer_money import TransferMoney
 from butterbot.domain.money_transfer import (
-    MAX_MONEY,
     InvalidTransfer,
     TransferResult,
 )
-from butterbot.domain.wallet import Wallet
+from butterbot.domain.wallet import MAX_MONEY, Wallet
 
 
 class FakeWalletRepository:
@@ -24,6 +23,9 @@ class FakeWalletRepository:
     ) -> TransferResult:
         self.transfers.append((sender_id, recipient_id, amount))
         return self.result
+
+    async def set_balance(self, user_id: int, amount: int) -> Wallet:
+        raise AssertionError("TransferMoney must not set a balance.")
 
 
 @pytest.mark.asyncio

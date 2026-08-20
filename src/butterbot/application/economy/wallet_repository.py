@@ -15,6 +15,10 @@ class WalletRepository(Protocol):
         """Return a user's wallet, creating a zero wallet when absent."""
         ...
 
+    async def set_balance(self, user_id: int, amount: int) -> Wallet:
+        """Atomically create or replace a wallet balance."""
+        ...
+
     async def transfer(
         self, sender_id: int, recipient_id: int, amount: int
     ) -> TransferResult:

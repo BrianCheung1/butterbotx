@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+MAX_MONEY = 2**63 - 1
+
 
 @dataclass(frozen=True, slots=True)
 class Wallet:
@@ -17,3 +19,5 @@ class Wallet:
             raise ValueError("User ID must be positive.")
         if self.balance < 0:
             raise ValueError("Balance cannot be negative.")
+        if self.balance > MAX_MONEY:
+            raise ValueError("Balance exceeds the supported limit.")

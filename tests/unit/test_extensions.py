@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pytest
 
-from butterbot.discord_app.extensions import EXTENSION_MODULES, load_extensions
+from butterbot.discord_app.extensions import (
+    CORE_EXTENSION_MODULES,
+    DEV_EXTENSION_MODULES,
+    load_extensions,
+)
 
 
 class FakeBot:
@@ -14,12 +18,12 @@ class FakeBot:
 
 
 @pytest.mark.asyncio
-async def test_balance_extension_is_explicitly_registered() -> None:
+async def test_production_loads_only_core_extensions() -> None:
     bot = FakeBot()
 
-    await load_extensions(bot)  # type: ignore[arg-type]
+    await load_extensions(bot, enable_dev_commands=False)  # type: ignore[arg-type]
 
-    assert EXTENSION_MODULES == (
+    assert CORE_EXTENSION_MODULES == (
         "butterbot.discord_app.cogs.balance",
         "butterbot.discord_app.cogs.give",
     )
@@ -30,11 +34,14 @@ async def test_balance_extension_is_explicitly_registered() -> None:
 
 
 @pytest.mark.asyncio
-async def test_extensions_load_in_explicit_order() -> None:
+async def test_development_commands_load_after_core_extensions() -> None:
     bot = FakeBot()
 
-    await load_extensions(
-        bot, ("butterbot.features.first", "butterbot.features.second")
-    )  # type: ignore[arg-type]
+    await load_extensions(bot, enable_dev_commands=True)  # type: ignore[arg-type]
 
-    assert bot.loaded == ["butterbot.features.first", "butterbot.features.second"]
+    assert DEV_EXTENSION_MODULES == ("butterbot.discord_app.cogs.set_balance",)
+    assert bot.loaded == [
+        "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.give",
+        "butterbot.discord_app.cogs.set_balance",
+    ]

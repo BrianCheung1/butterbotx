@@ -4,9 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from butterbot.domain.wallet import Wallet
-
-MAX_MONEY = 2**63 - 1
+from butterbot.domain.wallet import MAX_MONEY, Wallet
 
 
 class InvalidTransfer(ValueError):

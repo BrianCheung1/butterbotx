@@ -8,11 +8,11 @@ from pathlib import Path
 import pytest
 
 from butterbot.domain.money_transfer import (
-    MAX_MONEY,
     InsufficientFunds,
     InvalidTransfer,
     WalletLimitExceeded,
 )
+from butterbot.domain.wallet import MAX_MONEY, Wallet
 from butterbot.infrastructure.database.migrations import MigrationRunner
 from butterbot.infrastructure.database.sqlite import SQLiteDatabase
 from butterbot.infrastructure.database.sqlite_wallet_repository import (
@@ -83,6 +83,76 @@ async def test_existing_balance_is_returned_exactly(
     result = await repository.get_or_create_balance(456)
 
     assert result.balance == 123_450
+
+
+@pytest.mark.asyncio
+async def test_set_balance_creates_wallet_and_returns_exact_value(
+    database: SQLiteDatabase, repository: SQLiteWalletRepository
+) -> None:
+    result = await repository.set_balance(901, 123_450)
+
+    assert result.user_id == 901
+    assert result.balance == 123_450
+    assert balances(database, 901) == {901: 123_450}
+
+
+@pytest.mark.asyncio
+async def test_set_balance_replaces_existing_balance_and_accepts_zero(
+    database: SQLiteDatabase, repository: SQLiteWalletRepository
+) -> None:
+    set_balance(database, 902, 500)
+
+    result = await repository.set_balance(902, 0)
+
+    assert result == Wallet(user_id=902, balance=0)
+    assert balances(database, 902) == {902: 0}
+
+
+@pytest.mark.asyncio
+async def test_set_balance_accepts_maximum_wallet_value(
+    database: SQLiteDatabase, repository: SQLiteWalletRepository
+) -> None:
+    result = await repository.set_balance(903, MAX_MONEY)
+
+    assert result.balance == MAX_MONEY
+    assert balances(database, 903) == {903: MAX_MONEY}
+
+
+@pytest.mark.asyncio
+async def test_set_balance_rolls_back_when_upsert_fails(
+    database: SQLiteDatabase, repository: SQLiteWalletRepository
+) -> None:
+    set_balance(database, 904, 100)
+    database.run(
+        lambda connection: connection.execute(
+            """
+            CREATE TRIGGER reject_test_balance
+            BEFORE UPDATE OF balance ON users
+            WHEN NEW.balance = 777
+            BEGIN
+                SELECT RAISE(ABORT, 'test balance rejected');
+            END
+            """
+        )
+    )
+
+    with pytest.raises(sqlite3.IntegrityError, match="test balance rejected"):
+        await repository.set_balance(904, 777)
+
+    assert balances(database, 904) == {904: 100}
+
+
+@pytest.mark.asyncio
+async def test_concurrent_set_balance_operations_remain_complete(
+    database: SQLiteDatabase, repository: SQLiteWalletRepository
+) -> None:
+    results = await asyncio.gather(
+        repository.set_balance(905, 111),
+        repository.set_balance(905, 222),
+    )
+
+    assert {result.balance for result in results} == {111, 222}
+    assert balances(database, 905)[905] in {111, 222}
 
 
 @pytest.mark.asyncio

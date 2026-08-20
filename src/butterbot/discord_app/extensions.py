@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from typing import Protocol
 
-# Feature vertical slices are registered here deliberately.
-EXTENSION_MODULES: tuple[str, ...] = (
+# Feature vertical slices are registered in explicit production/dev sets.
+CORE_EXTENSION_MODULES: tuple[str, ...] = (
     "butterbot.discord_app.cogs.balance",
     "butterbot.discord_app.cogs.give",
 )
+
+DEV_EXTENSION_MODULES: tuple[str, ...] = ("butterbot.discord_app.cogs.set_balance",)
 
 
 class ExtensionLoader(Protocol):
@@ -19,9 +20,10 @@ class ExtensionLoader(Protocol):
         """Load one extension by its explicit module name."""
 
 
-async def load_extensions(
-    bot: ExtensionLoader, extension_modules: Iterable[str] = EXTENSION_MODULES
-) -> None:
-    """Load the explicitly registered Discord extensions in the given order."""
+async def load_extensions(bot: ExtensionLoader, *, enable_dev_commands: bool) -> None:
+    """Load the explicit production surface and optionally development commands."""
+    extension_modules = CORE_EXTENSION_MODULES
+    if enable_dev_commands:
+        extension_modules += DEV_EXTENSION_MODULES
     for module_name in extension_modules:
         await bot.load_extension(module_name)

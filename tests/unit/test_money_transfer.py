@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from butterbot.domain.money_transfer import InvalidTransfer, TransferResult
-from butterbot.domain.wallet import Wallet
+from butterbot.domain.wallet import MAX_MONEY, Wallet
 
 
 def test_transfer_result_records_wallets_and_amount() -> None:
@@ -24,6 +24,7 @@ def test_transfer_result_records_wallets_and_amount() -> None:
         (Wallet(1, 0), Wallet(1, 0), 100),
         (Wallet(1, 0), Wallet(2, 0), 0),
         (Wallet(1, 0), Wallet(2, 0), -1),
+        (Wallet(1, 0), Wallet(2, 0), MAX_MONEY + 1),
     ],
 )
 def test_transfer_result_rejects_invalid_values(

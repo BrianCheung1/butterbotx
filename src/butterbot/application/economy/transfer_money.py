@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from butterbot.application.economy.wallet_repository import WalletRepository
 from butterbot.domain.money_transfer import (
-    MAX_MONEY,
     InvalidTransfer,
     TransferResult,
 )
+from butterbot.domain.wallet import MAX_MONEY
 
 
 class TransferMoney:

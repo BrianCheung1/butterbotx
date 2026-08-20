@@ -21,6 +21,9 @@ class FakeWalletRepository:
     ) -> TransferResult:
         raise AssertionError("GetBalance must not transfer money.")
 
+    async def set_balance(self, user_id: int, amount: int) -> Wallet:
+        raise AssertionError("GetBalance must not set a balance.")
+
 
 @pytest.mark.asyncio
 async def test_get_balance_returns_repository_result() -> None:

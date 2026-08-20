@@ -10,6 +10,7 @@ import discord
 from discord.ext import commands
 
 from butterbot.application.economy.get_balance import GetBalance
+from butterbot.application.economy.set_balance import SetBalance
 from butterbot.application.economy.transfer_money import TransferMoney
 from butterbot.config import Settings
 from butterbot.discord_app.extensions import load_extensions
@@ -31,10 +32,13 @@ class ButterBot(commands.Bot):
         intents.members = True
         super().__init__(command_prefix=commands.when_mentioned, intents=intents)
         self._settings = settings
+        self.owner_id = settings.owner_id
+        self.dev_guild_id = settings.dev_guild_id
         self._http_session: aiohttp.ClientSession | None = None
         self._database = SQLiteDatabase(settings.database_path)
         self._wallet_repository = SQLiteWalletRepository(settings.database_path)
         self.get_balance = GetBalance(self._wallet_repository)
+        self.set_balance = SetBalance(self._wallet_repository)
         self.transfer_money = TransferMoney(self._wallet_repository)
 
     async def setup_hook(self) -> None:
@@ -45,7 +49,11 @@ class ButterBot(commands.Bot):
         try:
             self._database.open()
             MigrationRunner(_migration_directory()).apply(self._database)
-            await load_extensions(self)
+            _log_command_mode(self._settings)
+            await load_extensions(
+                self,
+                enable_dev_commands=self._settings.enable_dev_commands,
+            )
         except BaseException:
             await self._close_resources()
             raise
@@ -71,3 +79,14 @@ def _migration_directory() -> Path:
         / "database"
         / "migrations"
     )
+
+
+def _log_command_mode(settings: Settings) -> None:
+    if settings.enable_dev_commands:
+        logger.warning(
+            "Development commands are enabled for guild %s.",
+            settings.dev_guild_id,
+            extra={"dev_guild_id": settings.dev_guild_id},
+        )
+        return
+    logger.info("Development commands are disabled; loading production commands only.")

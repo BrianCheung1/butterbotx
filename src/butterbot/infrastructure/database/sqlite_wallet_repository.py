@@ -8,13 +8,12 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from butterbot.domain.money_transfer import (
-    MAX_MONEY,
     InsufficientFunds,
     InvalidTransfer,
     TransferResult,
     WalletLimitExceeded,
 )
-from butterbot.domain.wallet import Wallet
+from butterbot.domain.wallet import MAX_MONEY, Wallet
 
 
 class SQLiteWalletRepository:
@@ -50,6 +49,18 @@ class SQLiteWalletRepository:
             self._database_path,
             sender_id,
             recipient_id,
+            amount,
+        )
+
+    async def set_balance(self, user_id: int, amount: int) -> Wallet:
+        """Atomically create or replace a wallet balance."""
+        _validate_balance(user_id, amount)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            _set_balance,
+            self._database_path,
+            user_id,
             amount,
         )
 
@@ -144,6 +155,34 @@ def _transfer(
         connection.close()
 
 
+def _set_balance(database_path: Path, user_id: int, amount: int) -> Wallet:
+    connection = sqlite3.connect(database_path, isolation_level=None)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            """
+            INSERT INTO users (user_id, balance)
+            VALUES (?, ?)
+            ON CONFLICT (user_id) DO UPDATE
+            SET balance = excluded.balance
+            RETURNING balance
+            """,
+            (user_id, amount),
+        ).fetchone()
+        if row is None:
+            raise RuntimeError("Wallet balance was not returned after update.")
+        wallet = Wallet(user_id=user_id, balance=row["balance"])
+        connection.commit()
+        return wallet
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
 def _validate_transfer(sender_id: int, recipient_id: int, amount: int) -> None:
     if sender_id <= 0 or recipient_id <= 0:
         raise InvalidTransfer("User IDs must be positive.")
@@ -151,3 +190,12 @@ def _validate_transfer(sender_id: int, recipient_id: int, amount: int) -> None:
         raise InvalidTransfer("Sender and recipient must be different users.")
     if amount <= 0 or amount > MAX_MONEY:
         raise InvalidTransfer("Transfer amount is outside the supported range.")
+
+
+def _validate_balance(user_id: int, amount: int) -> None:
+    if user_id <= 0:
+        raise ValueError("User ID must be positive.")
+    if amount < 0:
+        raise ValueError("Balance cannot be negative.")
+    if amount > MAX_MONEY:
+        raise ValueError("Balance exceeds the supported limit.")
