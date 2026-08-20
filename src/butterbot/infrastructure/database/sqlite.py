@@ -19,6 +19,11 @@ class SQLiteDatabase:
         self._connection: sqlite3.Connection | None = None
         self._lock = threading.RLock()
 
+    @property
+    def path(self) -> Path:
+        """Return the configured database path for feature-owned connections."""
+        return self._path
+
     def open(self) -> None:
         """Create the parent directory and open the configured SQLite database."""
         with self._lock:

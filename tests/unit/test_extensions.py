@@ -14,13 +14,13 @@ class FakeBot:
 
 
 @pytest.mark.asyncio
-async def test_extensions_are_empty_until_a_feature_registers_one() -> None:
+async def test_balance_extension_is_explicitly_registered() -> None:
     bot = FakeBot()
 
     await load_extensions(bot)  # type: ignore[arg-type]
 
-    assert EXTENSION_MODULES == ()
-    assert bot.loaded == []
+    assert EXTENSION_MODULES == ("butterbot.discord_app.cogs.balance",)
+    assert bot.loaded == ["butterbot.discord_app.cogs.balance"]
 
 
 @pytest.mark.asyncio

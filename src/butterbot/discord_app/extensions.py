@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Protocol
 
-# Feature vertical slices add their extension module path here deliberately.
-EXTENSION_MODULES: tuple[str, ...] = ()
+# Feature vertical slices are registered here deliberately.
+EXTENSION_MODULES: tuple[str, ...] = ("butterbot.discord_app.cogs.balance",)
 
 
 class ExtensionLoader(Protocol):

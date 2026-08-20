@@ -9,10 +9,14 @@ import aiohttp
 import discord
 from discord.ext import commands
 
+from butterbot.application.economy.get_balance import GetBalance
 from butterbot.config import Settings
 from butterbot.discord_app.extensions import load_extensions
 from butterbot.infrastructure.database.migrations import MigrationRunner
 from butterbot.infrastructure.database.sqlite import SQLiteDatabase
+from butterbot.infrastructure.database.sqlite_wallet_repository import (
+    SQLiteWalletRepository,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +32,8 @@ class ButterBot(commands.Bot):
         self._settings = settings
         self._http_session: aiohttp.ClientSession | None = None
         self._database = SQLiteDatabase(settings.database_path)
+        self._wallet_repository = SQLiteWalletRepository(settings.database_path)
+        self.get_balance = GetBalance(self._wallet_repository)
 
     async def setup_hook(self) -> None:
         """Initialize shared infrastructure before connecting to Discord."""
@@ -52,6 +58,7 @@ class ButterBot(commands.Bot):
         if self._http_session is not None:
             await self._http_session.close()
             self._http_session = None
+        self._wallet_repository.close()
         self._database.close()
 
 
