@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, cast
 
 import pytest
@@ -30,9 +31,10 @@ class FakeResponse:
 
 
 class FakeInteraction:
-    def __init__(self, user: FakeUser, guild_id: int | None) -> None:
+    def __init__(self, user: FakeUser, guild_id: int | None, set_balance: Any) -> None:
         self.user = user
         self.guild_id = guild_id
+        self.client = SimpleNamespace(set_balance=set_balance)
         self.response = FakeResponse()
         self.edits: list[dict[str, Any]] = []
 
@@ -59,9 +61,11 @@ def callback() -> Any:
 @pytest.mark.asyncio
 async def test_set_balance_owner_sets_exact_whole_dollar_balance() -> None:
     service = StubSetBalance()
-    interaction = FakeInteraction(FakeUser(1, "Owner", "<@1>"), guild_id=10)
+    interaction = FakeInteraction(
+        FakeUser(1, "Owner", "<@1>"), guild_id=10, set_balance=service
+    )
     target = FakeUser(2, "Target", "<@2>")
-    cog = SetBalanceCog(service, owner_id=1, dev_guild_id=10)  # type: ignore[arg-type]
+    cog = SetBalanceCog(owner_id=1, dev_guild_id=10)
 
     await callback()(cog, interaction, user=target, amount=1_999)
 
@@ -75,8 +79,10 @@ async def test_set_balance_owner_sets_exact_whole_dollar_balance() -> None:
 @pytest.mark.asyncio
 async def test_set_balance_accepts_zero() -> None:
     service = StubSetBalance()
-    interaction = FakeInteraction(FakeUser(1, "Owner", "<@1>"), guild_id=10)
-    cog = SetBalanceCog(service, owner_id=1, dev_guild_id=10)  # type: ignore[arg-type]
+    interaction = FakeInteraction(
+        FakeUser(1, "Owner", "<@1>"), guild_id=10, set_balance=service
+    )
+    cog = SetBalanceCog(owner_id=1, dev_guild_id=10)
 
     await callback()(
         cog,
@@ -105,9 +111,11 @@ async def test_set_balance_rejects_unauthorized_context_before_service(
 ) -> None:
     service = StubSetBalance()
     interaction = FakeInteraction(
-        FakeUser(caller_id, "Caller", f"<@{caller_id}>"), guild_id=guild_id
+        FakeUser(caller_id, "Caller", f"<@{caller_id}>"),
+        guild_id=guild_id,
+        set_balance=service,
     )
-    cog = SetBalanceCog(service, owner_id=1, dev_guild_id=10)  # type: ignore[arg-type]
+    cog = SetBalanceCog(owner_id=1, dev_guild_id=10)
 
     await callback()(
         cog,
@@ -124,8 +132,10 @@ async def test_set_balance_rejects_unauthorized_context_before_service(
 @pytest.mark.asyncio
 async def test_set_balance_maps_invalid_amount_to_safe_response() -> None:
     service = StubSetBalance(ValueError("internal validation detail"))
-    interaction = FakeInteraction(FakeUser(1, "Owner", "<@1>"), guild_id=10)
-    cog = SetBalanceCog(service, owner_id=1, dev_guild_id=10)  # type: ignore[arg-type]
+    interaction = FakeInteraction(
+        FakeUser(1, "Owner", "<@1>"), guild_id=10, set_balance=service
+    )
+    cog = SetBalanceCog(owner_id=1, dev_guild_id=10)
 
     await callback()(
         cog,
@@ -145,8 +155,10 @@ async def test_set_balance_maps_invalid_amount_to_safe_response() -> None:
 @pytest.mark.asyncio
 async def test_set_balance_hides_and_logs_unexpected_error(caplog: Any) -> None:
     service = StubSetBalance(RuntimeError("private database detail"))
-    interaction = FakeInteraction(FakeUser(1, "Owner", "<@1>"), guild_id=10)
-    cog = SetBalanceCog(service, owner_id=1, dev_guild_id=10)  # type: ignore[arg-type]
+    interaction = FakeInteraction(
+        FakeUser(1, "Owner", "<@1>"), guild_id=10, set_balance=service
+    )
+    cog = SetBalanceCog(owner_id=1, dev_guild_id=10)
 
     await callback()(
         cog,
@@ -184,7 +196,6 @@ def test_set_balance_command_contract_is_canonical() -> None:
 
 class FakeSetBalanceBot:
     def __init__(self, dev_guild_id: int | None) -> None:
-        self.set_balance = StubSetBalance()
         self.owner_id = 1
         self.dev_guild_id = dev_guild_id
         self.registrations: list[tuple[Any, Any]] = []

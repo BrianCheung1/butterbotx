@@ -31,8 +31,7 @@ MINE_AGAIN_TIMEOUT_SECONDS = 300.0
 class MineCog(commands.Cog):
     """Expose staged, atomic mining actions through `/mine`."""
 
-    def __init__(self, mine: Mine, delay: MiningDelay = asyncio.sleep) -> None:
-        self._mine = mine
+    def __init__(self, delay: MiningDelay = asyncio.sleep) -> None:
         self._delay = delay
 
     @app_commands.command(name="mine", description="Mine resources for money and XP.")
@@ -41,7 +40,8 @@ class MineCog(commands.Cog):
         """Commit one mine, animate it, and reveal the persisted result."""
         await interaction.response.defer()
         try:
-            result = await self._mine.execute(interaction.user.id)
+            mine = _mine_service(interaction)
+            result = await mine.execute(interaction.user.id)
         except MiningCooldownActive as error:
             await interaction.edit_original_response(
                 content=_cooldown_message(error.next_mine_at.timestamp())
@@ -68,7 +68,7 @@ class MineCog(commands.Cog):
             return
 
         view = MineAgainView(
-            self._mine,
+            mine,
             owner_id=interaction.user.id,
             delay=self._delay,
         )
@@ -285,16 +285,25 @@ def _safe_failure_message() -> str:
     return "I couldn't complete your mining action. Please try again later."
 
 
-class MineBot(Protocol):
-    """Bot capabilities required to register the mining cog."""
+class MineRuntime(Protocol):
+    """Runtime service required when the mine command executes."""
 
     mine: Mine
+
+
+def _mine_service(interaction: discord.Interaction) -> Mine:
+    """Resolve the mining use case only at command execution time."""
+    return cast(MineRuntime, interaction.client).mine
+
+
+class MineBot(Protocol):
+    """Bot capability required to register the mining cog."""
 
     async def add_cog(self, cog: commands.Cog, /, *, override: bool = False) -> None:
         """Register a Discord cog."""
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Register the explicitly composed mining command."""
+    """Register mining metadata without resolving runtime services."""
     mine_bot = cast(MineBot, bot)
-    await mine_bot.add_cog(MineCog(mine_bot.mine))
+    await mine_bot.add_cog(MineCog())

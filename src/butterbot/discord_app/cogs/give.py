@@ -23,9 +23,6 @@ logger = logging.getLogger(__name__)
 class GiveCog(commands.Cog):
     """Expose atomic wallet transfers as the `/give` command."""
 
-    def __init__(self, transfer_money: TransferMoney) -> None:
-        self._transfer_money = transfer_money
-
     @app_commands.command(name="give", description="Give another player money.")
     @app_commands.describe(
         user="The user to give money to.", amount="The amount to give."
@@ -53,7 +50,7 @@ class GiveCog(commands.Cog):
 
         await interaction.response.defer()
         try:
-            await self._transfer_money.execute(
+            await _transfer_money(interaction).execute(
                 sender_id=interaction.user.id,
                 recipient_id=user.id,
                 amount=amount,
@@ -106,16 +103,25 @@ class GiveCog(commands.Cog):
         )
 
 
-class GiveBot(Protocol):
-    """Bot capabilities required to register the give cog."""
+class GiveRuntime(Protocol):
+    """Runtime service required when the give command executes."""
 
     transfer_money: TransferMoney
+
+
+def _transfer_money(interaction: discord.Interaction) -> TransferMoney:
+    """Resolve the transfer use case only at command execution time."""
+    return cast(GiveRuntime, interaction.client).transfer_money
+
+
+class GiveBot(Protocol):
+    """Bot capability required to register the give cog."""
 
     async def add_cog(self, cog: commands.Cog, /, *, override: bool = False) -> None:
         """Register a Discord cog."""
 
 
 async def setup(bot: commands.Bot) -> None:
-    """Register the explicitly composed give command."""
+    """Register give metadata without resolving runtime services."""
     give_bot = cast(GiveBot, bot)
-    await give_bot.add_cog(GiveCog(give_bot.transfer_money))
+    await give_bot.add_cog(GiveCog())

@@ -22,11 +22,9 @@ class SetBalanceCog(commands.Cog):
 
     def __init__(
         self,
-        set_balance: SetBalance,
         owner_id: int,
         dev_guild_id: int,
     ) -> None:
-        self._set_balance = set_balance
         self._owner_id = owner_id
         self._dev_guild_id = dev_guild_id
 
@@ -66,7 +64,7 @@ class SetBalanceCog(commands.Cog):
             return
 
         try:
-            wallet = await self._set_balance.execute(user.id, amount)
+            wallet = await _set_balance_service(interaction).execute(user.id, amount)
         except ValueError:
             await interaction.response.send_message(
                 content="That balance is outside the supported range.",
@@ -105,10 +103,20 @@ class SetBalanceCog(commands.Cog):
         )
 
 
-class SetBalanceBot(Protocol):
-    """Bot capabilities required to register the set-balance cog."""
+class SetBalanceRuntime(Protocol):
+    """Runtime service required when set-balance executes."""
 
     set_balance: SetBalance
+
+
+def _set_balance_service(interaction: discord.Interaction) -> SetBalance:
+    """Resolve the set-balance use case only at command execution time."""
+    return cast(SetBalanceRuntime, interaction.client).set_balance
+
+
+class SetBalanceBot(Protocol):
+    """Bot configuration required to register the set-balance cog."""
+
     owner_id: int
     dev_guild_id: int | None
 
@@ -133,7 +141,6 @@ async def setup(bot: commands.Bot) -> None:
     development_guild = discord.Object(id=set_balance_bot.dev_guild_id)
     await set_balance_bot.add_cog(
         SetBalanceCog(
-            set_balance_bot.set_balance,
             set_balance_bot.owner_id,
             set_balance_bot.dev_guild_id,
         ),

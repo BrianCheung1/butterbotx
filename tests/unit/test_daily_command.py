@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
+from types import SimpleNamespace
 from typing import Any, cast
 
 import discord
@@ -32,8 +33,9 @@ class FakeResponse:
 
 
 class FakeInteraction:
-    def __init__(self, user_id: int) -> None:
+    def __init__(self, user_id: int, claim_daily: Any) -> None:
         self.user = FakeUser(user_id)
+        self.client = SimpleNamespace(claim_daily=claim_daily)
         self.response = FakeResponse()
         self.edits: list[dict[str, Any]] = []
 
@@ -72,9 +74,9 @@ def successful_result() -> DailyClaimResult:
 
 @pytest.mark.asyncio
 async def test_daily_claims_for_caller_and_renders_exact_embed() -> None:
-    interaction = FakeInteraction(42)
     service = StubClaimDaily(result=successful_result())
-    cog = DailyCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, service)
+    cog = DailyCog()
 
     await callback()(cog, interaction)
 
@@ -96,9 +98,9 @@ async def test_daily_claims_for_caller_and_renders_exact_embed() -> None:
 @pytest.mark.asyncio
 async def test_daily_renders_next_utc_midnight_when_already_claimed() -> None:
     next_claim_at = datetime(2026, 8, 20, tzinfo=UTC)
-    interaction = FakeInteraction(42)
     service = StubClaimDaily(error=DailyAlreadyClaimed(next_claim_at))
-    cog = DailyCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, service)
+    cog = DailyCog()
 
     await callback()(cog, interaction)
 
@@ -113,9 +115,9 @@ async def test_daily_renders_next_utc_midnight_when_already_claimed() -> None:
 
 @pytest.mark.asyncio
 async def test_daily_maps_wallet_limit_to_safe_response() -> None:
-    interaction = FakeInteraction(42)
     service = StubClaimDaily(error=DailyRewardExceedsWalletLimit())
-    cog = DailyCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, service)
+    cog = DailyCog()
 
     await callback()(cog, interaction)
 
@@ -132,9 +134,9 @@ async def test_daily_maps_wallet_limit_to_safe_response() -> None:
 async def test_daily_hides_and_logs_internal_failures(
     error: Exception, caplog: pytest.LogCaptureFixture
 ) -> None:
-    interaction = FakeInteraction(42)
     service = StubClaimDaily(error=error)
-    cog = DailyCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(42, service)
+    cog = DailyCog()
 
     await callback()(cog, interaction)
 

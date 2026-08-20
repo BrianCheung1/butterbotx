@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from types import SimpleNamespace
 from typing import Any, cast
 
 import discord
@@ -25,8 +26,9 @@ class FakeResponse:
 
 
 class FakeInteraction:
-    def __init__(self, user: FakeUser) -> None:
+    def __init__(self, user: FakeUser, get_balance: Any) -> None:
         self.user = user
+        self.client = SimpleNamespace(get_balance=get_balance)
         self.response = FakeResponse()
 
 
@@ -48,9 +50,9 @@ class FailingGetBalance:
 @pytest.mark.asyncio
 async def test_balance_defaults_to_interaction_user() -> None:
     caller = FakeUser(id=10, name="Butter")
-    interaction = FakeInteraction(caller)
     service = StubGetBalance(Wallet(user_id=10, balance=1_999))
-    cog = BalanceCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(caller, service)
+    cog = BalanceCog()
 
     callback = cast(Any, BalanceCog.balance.callback)
     await callback(cog, interaction, user=None)
@@ -70,9 +72,9 @@ async def test_balance_defaults_to_interaction_user() -> None:
 async def test_balance_uses_selected_user() -> None:
     caller = FakeUser(id=10, name="Butter")
     selected = FakeUser(id=20, name="Friend")
-    interaction = FakeInteraction(caller)
     service = StubGetBalance(Wallet(user_id=20, balance=0))
-    cog = BalanceCog(service)  # type: ignore[arg-type]
+    interaction = FakeInteraction(caller, service)
+    cog = BalanceCog()
 
     callback = cast(Any, BalanceCog.balance.callback)
     await callback(cog, interaction, user=selected)
@@ -83,8 +85,8 @@ async def test_balance_uses_selected_user() -> None:
 
 @pytest.mark.asyncio
 async def test_balance_converts_internal_failure_to_safe_response(caplog: Any) -> None:
-    interaction = FakeInteraction(FakeUser(id=10, name="Butter"))
-    cog = BalanceCog(FailingGetBalance())  # type: ignore[arg-type]
+    interaction = FakeInteraction(FakeUser(id=10, name="Butter"), FailingGetBalance())
+    cog = BalanceCog()
 
     callback = cast(Any, BalanceCog.balance.callback)
     await callback(cog, interaction, user=None)
