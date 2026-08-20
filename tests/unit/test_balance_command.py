@@ -49,7 +49,7 @@ class FailingGetBalance:
 async def test_balance_defaults_to_interaction_user() -> None:
     caller = FakeUser(id=10, name="Butter")
     interaction = FakeInteraction(caller)
-    service = StubGetBalance(Wallet(user_id=10, balance_cents=199_950))
+    service = StubGetBalance(Wallet(user_id=10, balance=1_999))
     cog = BalanceCog(service)  # type: ignore[arg-type]
 
     callback = cast(Any, BalanceCog.balance.callback)
@@ -61,7 +61,7 @@ async def test_balance_defaults_to_interaction_user() -> None:
     embed = message["embed"]
     assert isinstance(embed, discord.Embed)
     assert embed.title == "Butter's Balance"
-    assert embed.description == "💰 $1,999.50"
+    assert embed.description == "💰 $1,999"
     assert embed.color == discord.Color.green()
     assert "ephemeral" not in message
 
@@ -71,7 +71,7 @@ async def test_balance_uses_selected_user() -> None:
     caller = FakeUser(id=10, name="Butter")
     selected = FakeUser(id=20, name="Friend")
     interaction = FakeInteraction(caller)
-    service = StubGetBalance(Wallet(user_id=20, balance_cents=0))
+    service = StubGetBalance(Wallet(user_id=20, balance=0))
     cog = BalanceCog(service)  # type: ignore[arg-type]
 
     callback = cast(Any, BalanceCog.balance.callback)

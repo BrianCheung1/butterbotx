@@ -6,7 +6,10 @@ from collections.abc import Iterable
 from typing import Protocol
 
 # Feature vertical slices are registered here deliberately.
-EXTENSION_MODULES: tuple[str, ...] = ("butterbot.discord_app.cogs.balance",)
+EXTENSION_MODULES: tuple[str, ...] = (
+    "butterbot.discord_app.cogs.balance",
+    "butterbot.discord_app.cogs.give",
+)
 
 
 class ExtensionLoader(Protocol):

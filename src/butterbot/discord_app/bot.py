@@ -10,6 +10,7 @@ import discord
 from discord.ext import commands
 
 from butterbot.application.economy.get_balance import GetBalance
+from butterbot.application.economy.transfer_money import TransferMoney
 from butterbot.config import Settings
 from butterbot.discord_app.extensions import load_extensions
 from butterbot.infrastructure.database.migrations import MigrationRunner
@@ -34,6 +35,7 @@ class ButterBot(commands.Bot):
         self._database = SQLiteDatabase(settings.database_path)
         self._wallet_repository = SQLiteWalletRepository(settings.database_path)
         self.get_balance = GetBalance(self._wallet_repository)
+        self.transfer_money = TransferMoney(self._wallet_repository)
 
     async def setup_hook(self) -> None:
         """Initialize shared infrastructure before connecting to Discord."""

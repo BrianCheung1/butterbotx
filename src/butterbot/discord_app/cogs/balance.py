@@ -52,7 +52,7 @@ class BalanceCog(commands.Cog):
 
         embed = discord.Embed(
             title=f"{selected_user.name}'s Balance",
-            description=f"💰 {format_money(balance.balance_cents)}",
+            description=f"💰 {format_money(balance.balance)}",
             color=discord.Color.green(),
         )
         await interaction.response.send_message(embed=embed)

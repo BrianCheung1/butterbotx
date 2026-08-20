@@ -2,17 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Protocol
-
+from butterbot.application.economy.wallet_repository import WalletRepository
 from butterbot.domain.wallet import Wallet
-
-
-class WalletRepository(Protocol):
-    """Persistence operations required by the balance use case."""
-
-    async def get_or_create_balance(self, user_id: int) -> Wallet:
-        """Return a user's balance, creating a zero wallet when absent."""
-        ...
 
 
 class GetBalance:

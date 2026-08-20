@@ -19,8 +19,14 @@ async def test_balance_extension_is_explicitly_registered() -> None:
 
     await load_extensions(bot)  # type: ignore[arg-type]
 
-    assert EXTENSION_MODULES == ("butterbot.discord_app.cogs.balance",)
-    assert bot.loaded == ["butterbot.discord_app.cogs.balance"]
+    assert EXTENSION_MODULES == (
+        "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.give",
+    )
+    assert bot.loaded == [
+        "butterbot.discord_app.cogs.balance",
+        "butterbot.discord_app.cogs.give",
+    ]
 
 
 @pytest.mark.asyncio

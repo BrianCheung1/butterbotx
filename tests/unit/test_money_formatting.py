@@ -6,11 +6,11 @@ from butterbot.discord_app.formatting.money import format_money
 
 
 @pytest.mark.parametrize(
-    ("amount_cents", "expected"),
-    [(0, "$0"), (150, "$1.50"), (199_900, "$1,999")],
+    ("amount", "expected"),
+    [(0, "$0"), (150, "$150"), (1_999, "$1,999")],
 )
-def test_format_money_is_exact(amount_cents: int, expected: str) -> None:
-    assert format_money(amount_cents) == expected
+def test_format_money_is_exact(amount: int, expected: str) -> None:
+    assert format_money(amount) == expected
 
 
 def test_format_money_rejects_negative_amount() -> None:

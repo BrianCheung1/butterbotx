@@ -7,6 +7,13 @@ import sqlite3
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from butterbot.domain.money_transfer import (
+    MAX_MONEY,
+    InsufficientFunds,
+    InvalidTransfer,
+    TransferResult,
+    WalletLimitExceeded,
+)
 from butterbot.domain.wallet import Wallet
 
 
@@ -31,6 +38,21 @@ class SQLiteWalletRepository:
             user_id,
         )
 
+    async def transfer(
+        self, sender_id: int, recipient_id: int, amount: int
+    ) -> TransferResult:
+        """Atomically debit one wallet and credit another."""
+        _validate_transfer(sender_id, recipient_id, amount)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            self._executor,
+            _transfer,
+            self._database_path,
+            sender_id,
+            recipient_id,
+            amount,
+        )
+
     def close(self) -> None:
         """Finish queued repository work and release its worker thread."""
         self._executor.shutdown()
@@ -46,11 +68,11 @@ def _get_or_create(database_path: Path, user_id: int) -> Wallet:
             "INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,)
         )
         row = connection.execute(
-            "SELECT balance_cents FROM users WHERE user_id = ?", (user_id,)
+            "SELECT balance FROM users WHERE user_id = ?", (user_id,)
         ).fetchone()
         if row is None:
             raise RuntimeError("Wallet was not available after creation.")
-        wallet = Wallet(user_id=user_id, balance_cents=row["balance_cents"])
+        wallet = Wallet(user_id=user_id, balance=row["balance"])
         connection.commit()
         return wallet
     except BaseException:
@@ -58,3 +80,74 @@ def _get_or_create(database_path: Path, user_id: int) -> Wallet:
         raise
     finally:
         connection.close()
+
+
+def _transfer(
+    database_path: Path,
+    sender_id: int,
+    recipient_id: int,
+    amount: int,
+) -> TransferResult:
+    connection = sqlite3.connect(database_path, isolation_level=None)
+    connection.row_factory = sqlite3.Row
+    connection.execute("PRAGMA foreign_keys = ON")
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        connection.execute(
+            "INSERT OR IGNORE INTO users (user_id) VALUES (?)", (sender_id,)
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO users (user_id) VALUES (?)", (recipient_id,)
+        )
+
+        sender_row = connection.execute(
+            """
+            UPDATE users
+            SET balance = balance - ?
+            WHERE user_id = ? AND balance >= ?
+            RETURNING balance
+            """,
+            (amount, sender_id, amount),
+        ).fetchone()
+        if sender_row is None:
+            available_row = connection.execute(
+                "SELECT balance FROM users WHERE user_id = ?", (sender_id,)
+            ).fetchone()
+            available_balance = 0 if available_row is None else available_row[0]
+            raise InsufficientFunds(available_balance)
+
+        recipient_row = connection.execute(
+            """
+            UPDATE users
+            SET balance = balance + ?
+            WHERE user_id = ? AND balance <= ? - ?
+            RETURNING balance
+            """,
+            (amount, recipient_id, MAX_MONEY, amount),
+        ).fetchone()
+        if recipient_row is None:
+            raise WalletLimitExceeded(
+                "Recipient wallet cannot hold the transfer amount."
+            )
+
+        result = TransferResult(
+            sender=Wallet(sender_id, sender_row[0]),
+            recipient=Wallet(recipient_id, recipient_row[0]),
+            amount=amount,
+        )
+        connection.commit()
+        return result
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def _validate_transfer(sender_id: int, recipient_id: int, amount: int) -> None:
+    if sender_id <= 0 or recipient_id <= 0:
+        raise InvalidTransfer("User IDs must be positive.")
+    if sender_id == recipient_id:
+        raise InvalidTransfer("Sender and recipient must be different users.")
+    if amount <= 0 or amount > MAX_MONEY:
+        raise InvalidTransfer("Transfer amount is outside the supported range.")
