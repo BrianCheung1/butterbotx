@@ -121,7 +121,16 @@ async def _synchronize_scope(
     retained = tuple(sorted(set(remote_names) & set(desired_names)))
 
     logger.info(
-        "Application-command synchronization plan.",
+        "Command sync plan [%s]:\n"
+        "  Desired: %s\n"
+        "  Added: %s\n"
+        "  Retained: %s\n"
+        "  Removed: %s",
+        _scope_label(guild),
+        _visible_command_names(desired_names),
+        _visible_command_names(added),
+        _visible_command_names(retained),
+        _visible_command_names(removed),
         extra={
             "command_scope": scope,
             "remote_before": remote_names,
@@ -144,7 +153,9 @@ async def _synchronize_scope(
 
     synchronized = _command_names(synchronized_commands)
     logger.info(
-        "Application-command synchronization completed.",
+        "Command sync completed [%s]:\n  Synchronized: %s",
+        _scope_label(guild),
+        _visible_command_names(synchronized),
         extra={
             "command_scope": scope,
             "synchronized": synchronized,
@@ -189,3 +200,17 @@ def _command_names(command_list: list[Any]) -> tuple[str, ...]:
         type_name = getattr(command_type, "name", str(command_type))
         identities.append(f"{type_name}:{command.name}")
     return tuple(sorted(identities))
+
+
+def _scope_label(guild: discord.abc.Snowflake | None) -> str:
+    if guild is None:
+        return "global production"
+    return f"development guild {guild.id}"
+
+
+def _visible_command_names(identities: tuple[str, ...]) -> str:
+    names = []
+    for identity in identities:
+        command_type, separator, name = identity.partition(":")
+        names.append(name if separator and command_type == "chat_input" else identity)
+    return ", ".join(sorted(names)) or "<none>"

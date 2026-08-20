@@ -163,37 +163,63 @@ async def test_development_sync_targets_only_guild_and_reports_stale_first(
         "chat_input:daily",
         "chat_input:old-command",
     )
-    plan_index = caplog.messages.index("Application-command synchronization plan.")
-    complete_index = caplog.messages.index(
-        "Application-command synchronization completed."
+    expected_plan = (
+        "Command sync plan [development guild 123]:\n"
+        "  Desired: balance, daily, old-command\n"
+        "  Added: balance, daily\n"
+        "  Retained: old-command\n"
+        "  Removed: stale-guild"
     )
+    expected_completion = (
+        "Command sync completed [development guild 123]:\n"
+        "  Synchronized: balance, daily, old-command"
+    )
+    plan_index = caplog.messages.index(expected_plan)
+    complete_index = caplog.messages.index(expected_completion)
     assert plan_index < complete_index
+    plan_record = caplog.records[plan_index]
+    assert plan_record.__dict__["desired"] == report.desired
+    assert plan_record.__dict__["removed"] == report.removed
 
 
 @pytest.mark.asyncio
-async def test_production_sync_targets_global_only() -> None:
+async def test_production_sync_targets_global_only(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     bot = FakeBot()
 
-    report = await synchronize_command_tree(
-        cast(commands.Bot, bot),
-        CommandSyncOperation.PRODUCTION,
-        dev_guild_id=123,
-    )
+    with caplog.at_level(logging.INFO):
+        report = await synchronize_command_tree(
+            cast(commands.Bot, bot),
+            CommandSyncOperation.PRODUCTION,
+            dev_guild_id=123,
+        )
 
     assert bot.tree.copy_calls == []
     assert bot.tree.sync_calls == [None]
     assert report.removed == ("chat_input:stale-global",)
+    assert caplog.messages == [
+        "Command sync plan [global production]:\n"
+        "  Desired: balance, daily\n"
+        "  Added: daily\n"
+        "  Retained: balance\n"
+        "  Removed: stale-global",
+        "Command sync completed [global production]:\n  Synchronized: balance, daily",
+    ]
 
 
 @pytest.mark.asyncio
-async def test_clear_development_only_clears_and_syncs_selected_guild() -> None:
+async def test_clear_development_only_clears_and_syncs_selected_guild(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     bot = FakeBot()
 
-    report = await synchronize_command_tree(
-        cast(commands.Bot, bot),
-        CommandSyncOperation.CLEAR_DEVELOPMENT,
-        dev_guild_id=123,
-    )
+    with caplog.at_level(logging.INFO):
+        report = await synchronize_command_tree(
+            cast(commands.Bot, bot),
+            CommandSyncOperation.CLEAR_DEVELOPMENT,
+            dev_guild_id=123,
+        )
 
     assert bot.tree.clear_calls == [123]
     assert bot.tree.sync_calls == [123]
@@ -202,6 +228,14 @@ async def test_clear_development_only_clears_and_syncs_selected_guild() -> None:
         "chat_input:old-command",
         "chat_input:stale-guild",
     )
+    assert caplog.messages == [
+        "Command sync plan [development guild 123]:\n"
+        "  Desired: <none>\n"
+        "  Added: <none>\n"
+        "  Retained: <none>\n"
+        "  Removed: old-command, stale-guild",
+        "Command sync completed [development guild 123]:\n  Synchronized: <none>",
+    ]
 
 
 @pytest.mark.asyncio
