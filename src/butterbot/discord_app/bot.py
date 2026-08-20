@@ -1,0 +1,64 @@
+"""Discord lifecycle orchestration for ButterBot."""
+
+from __future__ import annotations
+
+import logging
+from pathlib import Path
+
+import aiohttp
+import discord
+from discord.ext import commands
+
+from butterbot.config import Settings
+from butterbot.discord_app.extensions import load_extensions
+from butterbot.infrastructure.database.migrations import MigrationRunner
+from butterbot.infrastructure.database.sqlite import SQLiteDatabase
+
+logger = logging.getLogger(__name__)
+
+
+class ButterBot(commands.Bot):
+    """Coordinate Discord with explicitly owned application resources."""
+
+    def __init__(self, settings: Settings) -> None:
+        intents = discord.Intents.none()
+        intents.guilds = True
+        intents.members = True
+        super().__init__(command_prefix=commands.when_mentioned, intents=intents)
+        self._settings = settings
+        self._http_session: aiohttp.ClientSession | None = None
+        self._database = SQLiteDatabase(settings.database_path)
+
+    async def setup_hook(self) -> None:
+        """Initialize shared infrastructure before connecting to Discord."""
+        self._http_session = aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(connect=5, sock_read=15, total=30)
+        )
+        try:
+            self._database.open()
+            MigrationRunner(_migration_directory()).apply(self._database)
+            await load_extensions(self)
+        except BaseException:
+            await self._close_resources()
+            raise
+        logger.info("ButterBot infrastructure is ready.")
+
+    async def close(self) -> None:
+        """Close shared resources before closing the Discord client."""
+        await self._close_resources()
+        await super().close()
+
+    async def _close_resources(self) -> None:
+        if self._http_session is not None:
+            await self._http_session.close()
+            self._http_session = None
+        self._database.close()
+
+
+def _migration_directory() -> Path:
+    return (
+        Path(__file__).resolve().parents[1]
+        / "infrastructure"
+        / "database"
+        / "migrations"
+    )
